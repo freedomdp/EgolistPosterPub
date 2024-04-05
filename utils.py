@@ -2,6 +2,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 import time
+from datetime import datetime, time as datetime_time
 import re
 import logging
 from selenium.webdriver.common.action_chains import ActionChains
@@ -79,11 +80,11 @@ def format_time(time_value):
         # Если time_value не соответствует ожидаемому формату, используем его как есть
         return time_value
 
-
 def print_events_to_publish(events):
-    # Заголовки для таблицы
-    headers = ["Отметка о публикации", "Название публикации", "Дата публикации"]
-    print(f"{headers[0]:<25} | {headers[1]:<50} | {headers[2]:<20}")
+    # Обновленные заголовки для таблицы с добавлением "Длина строки времени публикации"
+    headers = ["Отметка о публикации", "Название публикации", "Дата публикации", "Время публикации"]
+    # Уменьшение ширины первой колонки в пять раз
+    print(f"{headers[0]:<5} | {headers[1]:<50} | {headers[2]:<20} | {headers[3]:<15}")
 
     # Фильтрация событий, готовых к публикации
     events_to_publish = [event for event in events if event.publication_mark == 0]
@@ -92,7 +93,17 @@ def print_events_to_publish(events):
         publication_mark = event.publication_mark
         title = event.title
         date = event.date.strftime("%Y-%m-%d") if hasattr(event, 'date') and event.date else "Нет даты"
-        print(f"{publication_mark:<25} | {title:<50} | {date:<20}")
+
+        # Правильная обработка и вывод времени публикации
+        if hasattr(event, 'time') and event.time:
+            if isinstance(event.time, datetime_time):  # Если время - объект datetime.time
+                time = event.time.strftime("%H:%M")  # Преобразование в строку с секундами
+            else:  # Предполагаем, что время уже в строковом формате
+                time = str(event.time)
+        else:
+            time = "Нет времени"  # Если времени нет
+
+        print(f"{publication_mark:<5} | {title:<50} | {date:<20} | {time:<15}")
 
     print(f"\nВсего событий, готовых к публикации: {len(events_to_publish)}")
 
@@ -110,15 +121,19 @@ def scroll_to_element(driver, element):
     driver.execute_script("arguments[0].scrollIntoView();", element)
 
 # Функция для очистки текста от пробелов и кавычек в начале и конце
-
 def clean_text(text):
     original_text = text  # Сохраняем исходный текст для логирования
     if not text:
         return text
 
-    pattern = r"[^a-zA-Zа-яА-Я0-9\n.,!?() \-іїєґІЇЄҐ'’]"
+    # Добавляем символы перехода на новую строку в список допустимых, но обрабатываем их отдельно
+    pattern = r"[^a-zA-Zа-яА-Я0-9\n.,!?+:() \-іїєґІЇЄҐ'’]"
     cleaned_text = re.sub(pattern, " ", text)
-    cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
+
+    # Разделяем текст на строки, обрабатываем каждую отдельно, удаляя лишние пробельные символы
+    lines = cleaned_text.split('\n')
+    cleaned_lines = [re.sub(r"\s+", " ", line).strip() for line in lines]
+    cleaned_text = '\n'.join(cleaned_lines).strip()
 
     if original_text != cleaned_text:
         logging.warning(f"Text modified during cleaning: Original '{original_text}', Cleaned '{cleaned_text}'")

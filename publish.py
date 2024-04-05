@@ -87,14 +87,19 @@ def publish_event(driver, event):
             print("Price ... 'event.price'")
             inputs[fields_mapping["price"] - 1].send_keys(event.price)
         # Форматирование и заполнение поля времени
-        if event.time:  # Проверка, что время не None
-            print("Time ... 'event.time' ")
+        if event.time:
+            # Для объектов datetime.time или непустых строк выполняем форматирование и заполнение
             if isinstance(event.time, datetime_time):
                 # Если event.time - это объект datetime.time, форматируем его в строку
                 time_formatted = event.time.strftime("%H:%M")
+            elif isinstance(event.time, str) and len(event.time.strip()) > 0:
+                # Если event.time - это непустая строка, используем её напрямую после удаления возможных пробелов в начале и конце
+                time_formatted = event.time.strip()
             else:
-                # Если event.time уже в формате строки, используем его напрямую
-                time_formatted = event.time
+                # Если event.time - это пустая строка или строка из пробелов, пропускаем заполнение поля времени
+                return
+            
+            # Если мы здесь, значит есть значение для заполнения поля времени
             inputs[fields_mapping["time"] - 1].send_keys(time_formatted)
         if event.contacts:
             print("Contacts ... 'event.contacts' ")
@@ -118,7 +123,7 @@ def publish_event(driver, event):
 
     except Exception as e:
         print(f"Ошибка при публикации события {event.title}: {e}")
-        time.sleep(sleep_after_publish)
+        time.sleep(sleep_after_publish * 10)
 
 
 def select_dropdown_option(driver, input_element, option_text):
