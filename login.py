@@ -19,26 +19,34 @@ def login():
     username = "admin@admin.com"
     password = "12345678"
 
-    # Инициализация WebDriver
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    driver.get(login_url)
-
     try:
-        # Авторизация на сайте
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, login_selector))).send_keys(username)
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, password_selector))).send_keys(password)
-        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, submit_button_selector))).click()
+        # Инициализация WebDriver
+        print("Установка и инициализация WebDriver...")
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        print("WebDriver успешно установлен и инициализирован.")
 
-        # Ожидание и проверка успешности авторизации
-        time.sleep(1)
-        dashboard_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, f"//div[contains(text(), '{dashboard_text}')]")))
-        if dashboard_element:
-            print("Авторизация успешно выполнена.")
-            driver.get(target_url)  # Переход на целевую страницу
-        else:
-            print("Авторизация не удалась.")
+        driver.get(login_url)
+
+        try:
+            # Авторизация на сайте
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, login_selector))).send_keys(username)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, password_selector))).send_keys(password)
+            WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, submit_button_selector))).click()
+
+            # Ожидание и проверка успешности авторизации
+            time.sleep(1)
+            dashboard_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, f"//div[contains(text(), '{dashboard_text}')]")))
+            if dashboard_element:
+                print("Авторизация успешно выполнена.")
+                driver.get(target_url)  # Переход на целевую страницу
+            else:
+                print("Авторизация не удалась.")
+
+        except Exception as e:
+            print(f"Произошла ошибка при авторизации: {e}")
+
+        return driver
 
     except Exception as e:
-        print(f"Произошла ошибка при авторизации: {e}")
-
-    return driver
+        print(f"Ошибка инициализации WebDriver: {e}")
+        return None

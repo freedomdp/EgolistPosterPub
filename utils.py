@@ -26,11 +26,12 @@ def select_dropdown_option(driver, input_element, option_text):
 def scroll_to_element(driver, element):
     driver.execute_script("arguments[0].scrollIntoView();", element)
 
+# Функция для очистки текста от пробелов и кавычек в начале и конце, а также от символов вне BMP
 def clean_text(text):
     if not text:
         return text
 
-    # Удаление пробелов, апострофов и кавычек в начале и в конце строки
+    # Удаление пробелов в начале и конце строки
     text = text.strip()
 
     # Удаление всех типов кавычек в начале и в конце строки
@@ -40,9 +41,12 @@ def clean_text(text):
     while len(text) > 0 and text[-1] in quotes:
         text = text[:-1].strip()
 
+    # Удаление символов вне BMP
+    text = clean_non_bmp(text)
+
     return text
 
-#Вам нужно убедиться, что весь текст, отправляемый в браузер, не содержит символов за пределами BMP. Можно добавить функцию, которая будет очищать текст от таких символов:
+# Функция для удаления символов вне BMP
 def clean_non_bmp(text):
     return ''.join(char for char in text if char.isprintable() and ord(char) <= 0xFFFF)
 

@@ -5,11 +5,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, time as datetime_time
 from selenium.webdriver.common.action_chains import ActionChains
 import time
-from utils import format_time
-from utils import close_calendar_with_js, clean_text, scroll_to_element
+from utils import format_time, close_calendar_with_js, clean_text, scroll_to_element
 from selenium.common.exceptions import TimeoutException
-
-
 
 # Конфигурационные параметры
 url_create_event = "https://admin.egolist.ua/events/create"
@@ -47,12 +44,12 @@ def publish_event(driver, event):
         inputs = driver.find_elements(By.CSS_SELECTOR, "input, textarea")
 
         # Обязательные поля
-        print(f"Tite ... 'event.title'")
+        print(f"Title ... '{clean_text(event.title)}'")
         inputs[fields_mapping["title"] - 1].send_keys(clean_text(event.title))
-        print(f"Type ... 'event.type'")
-        select_dropdown_option(driver, inputs[fields_mapping["type"] - 1], event.type)
+        print(f"Type ... '{clean_text(event.type)}'")
+        select_dropdown_option(driver, inputs[fields_mapping["type"] - 1], clean_text(event.type))
         # Форматирование и заполнение поля даты
-        print(f"Date ... 'event.date'")
+        print(f"Date ... '{event.date}'")
         date_input = inputs[fields_mapping["date"] - 1]
         date_str = event.date.strftime("%Y-%m-%d") if isinstance(event.date, datetime) else ""
         date_input.send_keys(date_str)
@@ -60,10 +57,10 @@ def publish_event(driver, event):
         # Закрытие календаря с помощью JavaScript
         close_calendar_with_js(driver)
         # Пауза, чтобы убедиться, что календарь закрыт
-        print("City ...")
-        select_dropdown_option(driver, inputs[fields_mapping["city"] - 1], event.city)
+        print(f"City ... '{clean_text(event.city)}'")
+        select_dropdown_option(driver, inputs[fields_mapping["city"] - 1], clean_text(event.city))
         time.sleep(1)
-        print(f"Sorce ... 'event.source'")
+        print(f"Source ... '{event.source}'")
         inputs[fields_mapping["source"] - 1].send_keys(event.source)
         try:
             # Попытка заполнить поле "venue_name"
@@ -71,21 +68,19 @@ def publish_event(driver, event):
             close_calendar_with_js(driver)
             print(f"Venue_name ... '{event.venue_name}'")
             venue_name_input = inputs[fields_mapping["venue_name"] - 1]
-            cleaned_venue_name = clean_text(event.venue_name)
-            venue_name_input.send_keys(cleaned_venue_name)
+            venue_name_input.send_keys(event.venue_name)
         except Exception as e:
             # Вывод деталей ошибки и значения, которое вызвало ошибку
             print(f"Ошибка при заполнении поля 'venue_name' значением '{event.venue_name}': {e}")
             raise  # Повторно вызываем исключение для остановки выполнения
 
-
         # Необязательные поля
         if event.description:
-            print(f"Description ... '{event.description[:100]}' ...")
+            print(f"Description ... '{clean_text(event.description)[:100]}' ...")
             inputs[fields_mapping["description"] - 1].send_keys(clean_text(event.description))
         if event.price:
-            print("Price ... 'event.price'")
-            inputs[fields_mapping["price"] - 1].send_keys(event.price)
+            print(f"Price ... '{clean_text(event.price)}'")
+            inputs[fields_mapping["price"] - 1].send_keys(clean_text(event.price))
         # Форматирование и заполнение поля времени
         if event.time:
             # Для объектов datetime.time или непустых строк выполняем форматирование и заполнение
@@ -98,17 +93,17 @@ def publish_event(driver, event):
             else:
                 # Если event.time - это пустая строка или строка из пробелов, пропускаем заполнение поля времени
                 return
-            
+
             # Если мы здесь, значит есть значение для заполнения поля времени
             inputs[fields_mapping["time"] - 1].send_keys(time_formatted)
         if event.contacts:
-            print("Contacts ... 'event.contacts' ")
+            print(f"Contacts ... '{event.contacts}'")
             inputs[fields_mapping["contacts"] - 1].send_keys(event.contacts)
         if event.photo_url:
-            print("Photo url ... 'event.photo_url'")
+            print(f"Photo url ... '{event.photo_url}'")
             inputs[fields_mapping["photo_url"] - 1].send_keys(event.photo_url)
         if event.video_url:
-            print("Video url ... 'event.video_url'")
+            print(f"Video url ... '{event.video_url}'")
             inputs[fields_mapping["video_url"] - 1].send_keys(event.video_url)
 
         # Нажатие на кнопку "Создать" для сохранения публикации
@@ -125,7 +120,6 @@ def publish_event(driver, event):
         print(f"Ошибка при публикации события {event.title}: {e}")
         time.sleep(sleep_after_publish * 10)
 
-
 def select_dropdown_option(driver, input_element, option_text):
     print("Dropdown ...")
     input_element.click()
@@ -135,8 +129,6 @@ def select_dropdown_option(driver, input_element, option_text):
     dropdown_elements = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, dropdown_selector))
     )
-
-    #print(f"Найдено {len(dropdown_elements)} элементов в выпадающем списке.")
 
     for item in dropdown_elements:
         print(f"Элемент списка: {item.text}")
