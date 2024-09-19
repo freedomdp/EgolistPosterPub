@@ -1,139 +1,150 @@
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from datetime import datetime, time as datetime_time
-from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 import time
-from utils import format_time, close_calendar_with_js, clean_text, scroll_to_element
-from selenium.common.exceptions import TimeoutException
+import logging
+from config import URL_CREATE_EVENT, SLEEP_AFTER_ACTION, CREATE_BUTTON_SELECTOR, FORM_FIELDS
+from utils import clean_text, select_dropdown_option, close_calendar_with_js, get_browser_logs, check_publication_status
 
-# Конфигурационные параметры
-url_create_event = "https://admin.egolist.ua/events/create"
-sleep_after_publish = 2  # время задержки для визуальной проверки
-create_button_selector = "button.el-button.el-button--success"
-
-fields_mapping = {
-    "title": 1,
-    "description": 2,
-    "type": 3,
-    "price": 4,
-    "date": 5,
-    "time": 6,
-    "city": 7,
-    "venue_name": 8,
-    "address": 9,
-    "source": 10,
-    "contacts": 11,
-    "photo_url": 12,
-    "video_url": 20
-}
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def publish_event(driver, event):
     if event.publication_mark != 0:
-        # Пропускаем публикацию, если publication_mark не равен 0
+        logging.info(f"Событие '{event.title}' уже опубликовано. Пропуск.")
         return
 
-    driver.get(url_create_event)
+    max_attempts = 5
+    for attempt in range(1, max_attempts + 1):
+        logging.info(f"Попытка публикации {attempt} из {max_attempts} для события '{event.title}'")
 
-    try:
-        # Ожидание загрузки страницы
-        time.sleep(1)
+        driver.get(URL_CREATE_EVENT)
 
-        # Получение всех элементов input и textarea
-        inputs = driver.find_elements(By.CSS_SELECTOR, "input, textarea")
-
-        # Обязательные поля
-        print(f"Title ... '{clean_text(event.title)}'")
-        inputs[fields_mapping["title"] - 1].send_keys(clean_text(event.title))
-        print(f"Type ... '{clean_text(event.type)}'")
-        select_dropdown_option(driver, inputs[fields_mapping["type"] - 1], clean_text(event.type))
-        # Форматирование и заполнение поля даты
-        print(f"Date ... '{event.date}'")
-        date_input = inputs[fields_mapping["date"] - 1]
-        date_str = event.date.strftime("%Y-%m-%d") if isinstance(event.date, datetime) else ""
-        date_input.send_keys(date_str)
-
-        # Закрытие календаря с помощью JavaScript
-        close_calendar_with_js(driver)
-        # Пауза, чтобы убедиться, что календарь закрыт
-        print(f"City ... '{clean_text(event.city)}'")
-        select_dropdown_option(driver, inputs[fields_mapping["city"] - 1], clean_text(event.city))
-        time.sleep(1)
-        print(f"Source ... '{event.source}'")
-        inputs[fields_mapping["source"] - 1].send_keys(event.source)
         try:
-            # Попытка заполнить поле "venue_name"
-            time.sleep(1)
-            close_calendar_with_js(driver)
-            print(f"Venue_name ... '{event.venue_name}'")
-            venue_name_input = inputs[fields_mapping["venue_name"] - 1]
-            venue_name_input.send_keys(event.venue_name)
+            WebDriverWait(driver, SLEEP_AFTER_ACTION * 5).until(
+                EC.presence_of_element_located((By.ID, FORM_FIELDS["title"]))
+            )
+
+            # Заполнение формы
+            fill_event_form(driver, event)
+
+            # Нажатие на кнопку "Создать" для сохранения публикации
+            logging.info("Нажатие кнопки 'Создать'")
+            create_button = WebDriverWait(driver, SLEEP_AFTER_ACTION * 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, CREATE_BUTTON_SELECTOR))
+            )
+            driver.execute_script("arguments[0].click();", create_button)
+
+            # Ожидание завершения публикации
+            try:
+                WebDriverWait(driver, SLEEP_AFTER_ACTION * 10).until(
+                    EC.url_changes(URL_CREATE_EVENT)
+                )
+                logging.info("URL изменился после нажатия кнопки 'Создать'")
+
+                # Дополнительное ожидание для загрузки новой страницы
+                time.sleep(SLEEP_AFTER_ACTION * 2)
+
+                # Проверка наличия сообщения об успешной публикации
+                success_message = driver.find_elements(By.CSS_SELECTOR, ".el-message--success")
+                if success_message:
+                    logging.info("Публикация успешно завершена")
+                    return True
+                else:
+                    logging.warning("Сообщение об успешной публикации не найдено")
+            except TimeoutException:
+                logging.warning("Тайм-аут при ожидании изменения URL")
+
+            # Получение логов консоли браузера
+            get_browser_logs(driver)
+
+            # Проверка статуса публикации
+            if check_publication_status(driver, event, SLEEP_AFTER_ACTION):
+                logging.info(f"Событие '{event.title}' успешно опубликовано")
+                return True
+
+            logging.warning(f"Попытка {attempt} не удалась. Повтор через {SLEEP_AFTER_ACTION * 2} секунд.")
+            time.sleep(SLEEP_AFTER_ACTION * 2)
+
         except Exception as e:
-            # Вывод деталей ошибки и значения, которое вызвало ошибку
-            print(f"Ошибка при заполнении поля 'venue_name' значением '{event.venue_name}': {e}")
-            raise  # Повторно вызываем исключение для остановки выполнения
+            logging.error(f"Ошибка при публикации события {event.title}: {e}")
+            time.sleep(SLEEP_AFTER_ACTION * 2)
 
-        # Необязательные поля
-        if event.description:
-            print(f"Description ... '{clean_text(event.description)[:100]}' ...")
-            inputs[fields_mapping["description"] - 1].send_keys(clean_text(event.description))
-        if event.price:
-            print(f"Price ... '{clean_text(event.price)}'")
-            inputs[fields_mapping["price"] - 1].send_keys(clean_text(event.price))
-        # Форматирование и заполнение поля времени
-        if event.time:
-            # Для объектов datetime.time или непустых строк выполняем форматирование и заполнение
-            if isinstance(event.time, datetime_time):
-                # Если event.time - это объект datetime.time, форматируем его в строку
-                time_formatted = event.time.strftime("%H:%M")
-            elif isinstance(event.time, str) and len(event.time.strip()) > 0:
-                # Если event.time - это непустая строка, используем её напрямую после удаления возможных пробелов в начале и конце
-                time_formatted = event.time.strip()
-            else:
-                # Если event.time - это пустая строка или строка из пробелов, пропускаем заполнение поля времени
-                return
+    logging.error(f"Не удалось опубликовать событие '{event.title}' после {max_attempts} попыток")
+    return False
 
-            # Если мы здесь, значит есть значение для заполнения поля времени
-            inputs[fields_mapping["time"] - 1].send_keys(time_formatted)
-        if event.contacts:
-            print(f"Contacts ... '{event.contacts}'")
-            inputs[fields_mapping["contacts"] - 1].send_keys(event.contacts)
-        if event.photo_url:
-            print(f"Photo url ... '{event.photo_url}'")
-            inputs[fields_mapping["photo_url"] - 1].send_keys(event.photo_url)
-        if event.video_url:
-            print(f"Video url ... '{event.video_url}'")
-            inputs[fields_mapping["video_url"] - 1].send_keys(event.video_url)
+def fill_event_form(driver, event):
+    # Заголовок мероприятия
+    title = clean_text(str(event.title))
+    if len(title) > 255:
+        title = title[:252] + "..."
+    logging.info(f"Заполнение заголовка: '{title}'")
+    driver.find_element(By.ID, FORM_FIELDS["title"]).send_keys(title)
 
-        # Нажатие на кнопку "Создать" для сохранения публикации
-        print("Button ...")
-        create_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, create_button_selector))
-        )
-        create_button.click()
+    # Описание мероприятия
+    if event.description:
+        description = clean_text(str(event.description))
+        logging.info(f"Заполнение описания: '{description[:100]}...'")
+        driver.find_element(By.ID, FORM_FIELDS["description"]).send_keys(description)
 
-        print(f"---------- ПУБЛИКАЦИЯ МЕРОПРИЯТИЯ '{event.title}' ВЫПОЛНЕНА ----------")
-        time.sleep(sleep_after_publish)
+    # Тип мероприятия
+    event_type = clean_text(str(event.type))
+    logging.info(f"Выбор типа мероприятия: '{event_type}'")
+    select_dropdown_option(driver, driver.find_element(By.ID, FORM_FIELDS["type"]), event_type, SLEEP_AFTER_ACTION)
 
-    except Exception as e:
-        print(f"Ошибка при публикации события {event.title}: {e}")
-        time.sleep(sleep_after_publish * 10)
+    # Город
+    city = clean_text(str(event.city))
+    logging.info(f"Выбор города: '{city}'")
+    select_dropdown_option(driver, driver.find_element(By.ID, FORM_FIELDS["city"]), city, SLEEP_AFTER_ACTION)
 
-def select_dropdown_option(driver, input_element, option_text):
-    print("Dropdown ...")
-    input_element.click()
-    time.sleep(1)
+    # Цена
+    if event.price:
+        logging.info(f"Заполнение цены: '{event.price}'")
+        driver.find_element(By.ID, FORM_FIELDS["price"]).send_keys(str(event.price))
 
-    dropdown_selector = "div.el-select-dropdown li.el-select-dropdown__item"
-    dropdown_elements = WebDriverWait(driver, 10).until(
-        EC.presence_of_all_elements_located((By.CSS_SELECTOR, dropdown_selector))
-    )
+    # Дата проведения мероприятий
+    if event.date:
+        date_str = event.date.strftime("%Y-%m-%d") if hasattr(event.date, 'strftime') else str(event.date)
+        logging.info(f"Заполнение даты: '{date_str}'")
+        driver.find_element(By.ID, FORM_FIELDS["date"]).send_keys(date_str)
+        close_calendar_with_js(driver)
 
-    for item in dropdown_elements:
-        print(f"Элемент списка: {item.text}")
-        if item.text == option_text:
-            scroll_to_element(driver, item)
-            time.sleep(1)
-            item.click()
-            break
+    # Время проведения
+    if event.time:
+        time_str = event.time.strftime("%H:%M") if hasattr(event.time, 'strftime') else str(event.time)
+        logging.info(f"Заполнение времени: '{time_str}'")
+        driver.find_element(By.ID, FORM_FIELDS["time"]).send_keys(time_str)
+
+    # Название заведения
+    if event.venue_name:
+        logging.info(f"Заполнение названия заведения: '{event.venue_name}'")
+        driver.find_element(By.ID, FORM_FIELDS["venue_name"]).send_keys(str(event.venue_name))
+
+    # Адрес
+    if event.address:
+        address = clean_text(str(event.address))
+        logging.info(f"Заполнение адреса: '{address}'")
+        driver.find_element(By.ID, FORM_FIELDS["address"]).send_keys(address)
+
+    # Источник
+    if event.source:
+        logging.info(f"Заполнение источника: '{event.source}'")
+        driver.find_element(By.ID, FORM_FIELDS["source"]).send_keys(str(event.source))
+
+    # Контакты
+    if event.contacts:
+        contacts = clean_text(str(event.contacts))
+        logging.info(f"Заполнение контактов: '{contacts}'")
+        driver.find_element(By.ID, FORM_FIELDS["contacts"]).send_keys(contacts)
+
+    # Фото
+    if event.photo_url:
+        logging.info(f"Заполнение URL фото: '{event.photo_url}'")
+        driver.find_element(By.ID, FORM_FIELDS["photo"]).send_keys(str(event.photo_url))
+
+    # Видео
+    if event.video_url:
+        logging.info(f"Заполнение URL видео: '{event.video_url}'")
+        driver.find_element(By.ID, FORM_FIELDS["video"]).send_keys(str(event.video_url))
+
+    logging.info("Заполнение формы завершено")

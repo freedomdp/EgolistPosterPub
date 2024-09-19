@@ -9,7 +9,7 @@ import time
 def login():
     # URL-адрес для авторизации и целевой страницы
     login_url = "https://admin.egolist.ua/"
-    target_url = "https://admin.egolist.ua/events/list"  # URL-адрес после авторизации
+    target_url = "https://admin.egolist.ua/events/list"
 
     # Селекторы и данные для входа
     login_selector = "input[type='text'].el-input__inner"
@@ -22,7 +22,15 @@ def login():
     try:
         # Инициализация WebDriver
         print("Установка и инициализация WebDriver...")
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+
+        # Использование ChromeDriverManager без указания версии
+        driver_path = ChromeDriverManager().install()
+
+        service = Service(driver_path)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         print("WebDriver успешно установлен и инициализирован.")
 
         driver.get(login_url)

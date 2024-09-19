@@ -2,7 +2,7 @@ from readxlsx import read_excel
 from utils import print_events_to_publish
 from publish import publish_event
 from login import login
-
+import os
 
 
 def main():
@@ -44,7 +44,7 @@ def main():
             print("Ошибка инициализации WebDriver. Завершение программы.")
             return
 
-        path_to_file = "C:/Afisha/afisha.xlsx"
+        path_to_file = os.path.join(os.path.dirname(__file__), "afisha.xlsx")
         print(f"Чтение данных из файла Excel: {path_to_file}")
 
         try:
