@@ -5,48 +5,36 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+from config import (
+    LOGIN_URL, TARGET_URL, LOGIN_SELECTOR, PASSWORD_SELECTOR,
+    SUBMIT_BUTTON_SELECTOR, DASHBOARD_TEXT, USERNAME, PASSWORD,
+    CHROME_OPTIONS, SLEEP_AFTER_ACTION
+)
 
 def login():
-    # URL-адрес для авторизации и целевой страницы
-    login_url = "https://admin.egolist.ua/"
-    target_url = "https://admin.egolist.ua/events/list"
-
-    # Селекторы и данные для входа
-    login_selector = "input[type='text'].el-input__inner"
-    password_selector = "input[type='password'].el-input__inner"
-    submit_button_selector = "button.el-button.el-button--primary"
-    dashboard_text = "Dashboard"
-    username = "admin@admin.com"
-    password = "12345678"
-
     try:
-        # Инициализация WebDriver
         print("Установка и инициализация WebDriver...")
         chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
+        for option in CHROME_OPTIONS:
+            chrome_options.add_argument(option)
 
-        # Использование ChromeDriverManager без указания версии
         driver_path = ChromeDriverManager().install()
-
         service = Service(driver_path)
         driver = webdriver.Chrome(service=service, options=chrome_options)
         print("WebDriver успешно установлен и инициализирован.")
 
-        driver.get(login_url)
+        driver.get(LOGIN_URL)
 
         try:
-            # Авторизация на сайте
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, login_selector))).send_keys(username)
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, password_selector))).send_keys(password)
-            WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, submit_button_selector))).click()
+            WebDriverWait(driver, SLEEP_AFTER_ACTION * 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, LOGIN_SELECTOR))).send_keys(USERNAME)
+            WebDriverWait(driver, SLEEP_AFTER_ACTION * 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, PASSWORD_SELECTOR))).send_keys(PASSWORD)
+            WebDriverWait(driver, SLEEP_AFTER_ACTION * 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, SUBMIT_BUTTON_SELECTOR))).click()
 
-            # Ожидание и проверка успешности авторизации
-            time.sleep(1)
-            dashboard_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, f"//div[contains(text(), '{dashboard_text}')]")))
+            time.sleep(SLEEP_AFTER_ACTION)
+            dashboard_element = WebDriverWait(driver, SLEEP_AFTER_ACTION * 5).until(EC.presence_of_element_located((By.XPATH, f"//div[contains(text(), '{DASHBOARD_TEXT}')]")))
             if dashboard_element:
                 print("Авторизация успешно выполнена.")
-                driver.get(target_url)  # Переход на целевую страницу
+                driver.get(TARGET_URL)
             else:
                 print("Авторизация не удалась.")
 

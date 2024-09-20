@@ -4,7 +4,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 import time
 import logging
-from config import URL_CREATE_EVENT, SLEEP_AFTER_ACTION, CREATE_BUTTON_SELECTOR, FORM_FIELDS
+from config import URL_CREATE_EVENT, SLEEP_AFTER_ACTION, CREATE_BUTTON_SELECTOR, FORM_FIELDS, MAX_PUBLICATION_ATTEMPTS
 from utils import clean_text, select_dropdown_option, close_calendar_with_js, get_browser_logs, check_publication_status
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,9 +14,8 @@ def publish_event(driver, event):
         logging.info(f"Событие '{event.title}' уже опубликовано. Пропуск.")
         return
 
-    max_attempts = 5
-    for attempt in range(1, max_attempts + 1):
-        logging.info(f"Попытка публикации {attempt} из {max_attempts} для события '{event.title}'")
+    for attempt in range(1, MAX_PUBLICATION_ATTEMPTS + 1):
+        logging.info(f"Попытка публикации {attempt} из {MAX_PUBLICATION_ATTEMPTS} для события '{event.title}'")
 
         driver.get(URL_CREATE_EVENT)
 
@@ -70,7 +69,7 @@ def publish_event(driver, event):
             logging.error(f"Ошибка при публикации события {event.title}: {e}")
             time.sleep(SLEEP_AFTER_ACTION * 2)
 
-    logging.error(f"Не удалось опубликовать событие '{event.title}' после {max_attempts} попыток")
+    logging.error(f"Не удалось опубликовать событие '{event.title}' после {MAX_PUBLICATION_ATTEMPTS} попыток")
     return False
 
 def fill_event_form(driver, event):

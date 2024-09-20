@@ -2,40 +2,26 @@ from readxlsx import read_excel
 from utils import print_events_to_publish
 from publish import publish_event
 from login import login
-import os
-
+from config import EXCEL_FILE_PATH, EXCEL_SHEET_NAME
 
 def main():
     print("Запуск программы...")
 
     # Проверка подключения модулей
-    try:
-        from readxlsx import read_excel
-        print("Модуль read_excel успешно подключен.")
-    except Exception as e:
-        print(f"Ошибка подключения модуля read_excel: {e}")
-        return
+    modules_to_check = [
+        ('readxlsx', 'read_excel'),
+        ('utils', 'print_events_to_publish'),
+        ('publish', 'publish_event'),
+        ('login', 'login')
+    ]
 
-    try:
-        from utils import print_events_to_publish
-        print("Модуль print_events_to_publish успешно подключен.")
-    except Exception as e:
-        print(f"Ошибка подключения модуля print_events_to_publish: {e}")
-        return
-
-    try:
-        from publish import publish_event
-        print("Модуль publish_event успешно подключен.")
-    except Exception as e:
-        print(f"Ошибка подключения модуля publish_event: {e}")
-        return
-
-    try:
-        from login import login
-        print("Модуль login успешно подключен.")
-    except Exception as e:
-        print(f"Ошибка подключения модуля login: {e}")
-        return
+    for module_name, function_name in modules_to_check:
+        try:
+            __import__(module_name)
+            print(f"Модуль {function_name} успешно подключен.")
+        except Exception as e:
+            print(f"Ошибка подключения модуля {function_name}: {e}")
+            return
 
     try:
         print("Попытка входа...")
@@ -44,11 +30,10 @@ def main():
             print("Ошибка инициализации WebDriver. Завершение программы.")
             return
 
-        path_to_file = os.path.join(os.path.dirname(__file__), "afisha.xlsx")
-        print(f"Чтение данных из файла Excel: {path_to_file}")
+        print(f"Чтение данных из файла Excel: {EXCEL_FILE_PATH}")
 
         try:
-            events = read_excel(path_to_file, 'data')
+            events = read_excel(EXCEL_FILE_PATH, EXCEL_SHEET_NAME)
             print(f"Данные из Excel файла успешно прочитаны. Количество событий: {len(events)}")
 
             # Вывод событий, готовых к публикации

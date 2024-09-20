@@ -1,11 +1,31 @@
-# URL для создания события
+import os
+
+# Существующие параметры
 URL_CREATE_EVENT = "https://admin.egolist.ua/events/create"
-
-# Базовое время задержки для всех действий
 SLEEP_AFTER_ACTION = 2
-
-# Селектор кнопки создания
 CREATE_BUTTON_SELECTOR = "button.el-button.el-button--success"
+MAX_PUBLICATION_ATTEMPTS = 5
+
+# Параметры для логина
+LOGIN_URL = "https://admin.egolist.ua/"
+TARGET_URL = "https://admin.egolist.ua/events/list"
+LOGIN_SELECTOR = "input[type='text'].el-input__inner"
+PASSWORD_SELECTOR = "input[type='password'].el-input__inner"
+SUBMIT_BUTTON_SELECTOR = "button.el-button.el-button--primary"
+DASHBOARD_TEXT = "Dashboard"
+USERNAME = "admin@admin.com"
+PASSWORD = "12345678"
+
+# Параметры WebDriver
+CHROME_OPTIONS = [
+    '--no-sandbox',
+    '--disable-dev-shm-usage'
+]
+
+# Параметры для main()
+EXCEL_FILE_NAME = "afisha.xlsx"
+EXCEL_SHEET_NAME = 'data'
+EXCEL_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), EXCEL_FILE_NAME)
 
 # ID элементов формы
 FORM_FIELDS = {
