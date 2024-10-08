@@ -4,7 +4,7 @@ import os
 URL_CREATE_EVENT = "https://admin.egolist.ua/events/create"
 SLEEP_AFTER_ACTION = 2
 CREATE_BUTTON_SELECTOR = "button.el-button.el-button--success"
-MAX_PUBLICATION_ATTEMPTS = 5
+MAX_PUBLICATION_ATTEMPTS = 2
 
 # Параметры для логина
 LOGIN_URL = "https://admin.egolist.ua/"
@@ -19,7 +19,8 @@ PASSWORD = "12345678"
 # Параметры WebDriver
 CHROME_OPTIONS = [
     '--no-sandbox',
-    '--disable-dev-shm-usage'
+    '--disable-dev-shm-usage',
+    '--remote-debugging-port=9222'
 ]
 
 # Параметры для main()

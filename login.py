@@ -17,6 +17,7 @@ def login():
         chrome_options = webdriver.ChromeOptions()
         for option in CHROME_OPTIONS:
             chrome_options.add_argument(option)
+        chrome_options.add_argument("--remote-debugging-port=9222")  # Добавляем эту опцию
 
         driver_path = ChromeDriverManager().install()
         service = Service(driver_path)
