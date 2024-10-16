@@ -1,27 +1,11 @@
-from readxlsx import read_excel
+import traceback
+from google_sheets_reader import read_google_sheet, update_google_sheet
 from utils import print_events_to_publish
 from publish import publish_event
 from login import login
-from config import EXCEL_FILE_PATH, EXCEL_SHEET_NAME
 
 def main():
     print("Запуск программы...")
-
-    # Проверка подключения модулей
-    modules_to_check = [
-        ('readxlsx', 'read_excel'),
-        ('utils', 'print_events_to_publish'),
-        ('publish', 'publish_event'),
-        ('login', 'login')
-    ]
-
-    for module_name, function_name in modules_to_check:
-        try:
-            __import__(module_name)
-            print(f"Модуль {function_name} успешно подключен.")
-        except Exception as e:
-            print(f"Ошибка подключения модуля {function_name}: {e}")
-            return
 
     try:
         print("Попытка входа...")
@@ -30,31 +14,65 @@ def main():
             print("Ошибка инициализации WebDriver. Завершение программы.")
             return
 
-        print(f"Чтение данных из файла Excel: {EXCEL_FILE_PATH}")
+        print("Чтение данных из Google Sheets...")
 
         try:
-            events = read_excel(EXCEL_FILE_PATH, EXCEL_SHEET_NAME)
-            print(f"Данные из Excel файла успешно прочитаны. Количество событий: {len(events)}")
+            events = read_google_sheet()
+            print(f"Данные из Google Sheets прочитаны. Количество событий: {len(events)}")
 
-            # Вывод событий, готовых к публикации
-            print_events_to_publish(events)
+            if not events:
+                print("Нет данных для обработки. Завершение программы.")
+                return
 
+            events_to_publish = [event for event in events if event.get('Отметка о публикации') == '0']
+            for event in events_to_publish:
+                if publish_event(driver, event):
+                    print(f"Событие '{event['Заголовок']}' успешно опубликовано")
+                else:
+                    print(f"Не удалось опубликовать событие '{event['Заголовок']}'")
+
+            if not events_to_publish:
+                print("Нет новых событий для публикации. Завершение программы.")
+                return
+
+            print("\nПримеры первых 5 событий для публикации:")
+            for i, event in enumerate(events_to_publish[:5]):
+                print(f"Событие {i+1}:")
+                for key, value in event.items():
+                    print(f"  {key}: {value}")
+                print()
+
+            total_events = len(events_to_publish)
             published_count = 0
-            for event in events:
-                if event.publication_mark == 0:
-                    publish_event(driver, event)
-                    published_count += 1
 
-            if published_count > 0:
-                print(f"Все события опубликованы. Опубликовано событий: {published_count}")
-            else:
-                print("Нет данных для публикации.")
+            for index, event in enumerate(events_to_publish, 1):
+                print(f"\n\n\nОбработка события {index}/{total_events}: '{event['Заголовок']}' (Дата: {event['Дата']}, Время: {event.get('Время', 'Не указано')})\n\n\n")
+                try:
+                    if publish_event(driver, event):
+                        published_count += 1
+                        print(f"Событие успешно опубликовано. Обновление статуса в Google Sheets...")
+                        update_google_sheet(GOOGLE_SHEETS_SPREADSHEET_ID, event['row'], '1')
+                    else:
+                        print(f"Не удалось опубликовать событие.")
+                except Exception as e:
+                    print(f"Ошибка при публикации события: {e}")
+
+                print(f"Прогресс: {published_count}/{total_events} опубликовано")
+
+            print(f"Итого опубликовано событий: {published_count}/{total_events}")
 
         except Exception as e:
-            print(f"Ошибка при чтении данных из Excel файла: {e}")
+            print(f"Ошибка при работе с Google Sheets: {e}")
+            traceback.print_exc()
 
     except Exception as e:
-        print(f"Произошла ошибка: {e}")
+        print(f"Произошла неожиданная ошибка: {e}")
+        traceback.print_exc()
+
+    finally:
+        if 'driver' in locals() and driver:
+            print("Закрытие WebDriver...")
+            driver.quit()
 
     print("Программа завершена.")
 

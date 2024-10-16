@@ -50,24 +50,13 @@ def clean_text(text):
     return cleaned_text if cleaned_text else text
 
 def print_events_to_publish(events):
-    headers = ["Отметка о публикации", "Название публикации", "Дата публикации", "Время публикации"]
-    print(f"{headers[0]:<5} | {headers[1]:<50} | {headers[2]:<20} | {headers[3]:<15}")
-
-    events_to_publish = [event for event in events if event.publication_mark == 0]
-
-    for event in events_to_publish:
-        publication_mark = event.publication_mark
-        title = event.title
-        date = event.date.strftime("%Y-%m-%d") if hasattr(event, 'date') and event.date else "Нет даты"
-
-        if hasattr(event, 'time') and event.time:
-            time = event.time.strftime("%H:%M") if isinstance(event.time, datetime_time) else str(event.time)
-        else:
-            time = "Нет времени"
-
-        print(f"{publication_mark:<5} | {title:<50} | {date:<20} | {time:<15}")
-
-    print(f"\nВсего событий, готовых к публикации: {len(events_to_publish)}")
+    print("Отметка о публикации | Название публикации                                | Дата публикации      | Время публикации")
+    for event in events:
+        publication_mark = event.get('publication_mark', '0')
+        title = event.get('title', '')[:50].ljust(50)
+        date = event.get('date', '')
+        time = event.get('time', '')
+        print(f"{publication_mark:<20} | {title} | {date:<20} | {time}")
 
 def close_calendar_with_js(driver):
     script = """
